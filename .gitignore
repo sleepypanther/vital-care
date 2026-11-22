@@ -1,9 +1,40 @@
-node_modules
-dist
-build
-.next
+# AI tools and agent configurations
+.agents/
+.codex/
+.gemini/
+.impeccable/
+.kilo/
+.kilocode/
+
+# IDE configurations
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Environment and secrets
 .env
-.env.local
-.DS_Store
+.env.*
+!.env.example
+
+# Local databases
 *.db
 *.sqlite
+*.sqlite3
+
+# Logs and cache
+*.log
+.turbo/
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
