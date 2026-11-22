@@ -1,0 +1,311 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  patient
+  caregiver
+}
+
+enum RelationshipRole {
+  primary
+  secondary
+}
+
+enum RelationshipStatus {
+  pending
+  active
+  revoked
+}
+
+enum MedicationLogStatus {
+  taken
+  missed
+  skipped
+  pending
+}
+
+enum EmergencyEventType {
+  sos
+  fall
+  no_response
+  no_movement
+  manual
+}
+
+enum EmergencyEventStatus {
+  active
+  acknowledged
+  resolved
+  cancelled
+}
+
+enum NotificationPriority {
+  critical
+  high
+  medium
+  low
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      UserRole
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patientProfile   PatientProfile?
+  caregiverProfile CaregiverProfile?
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+}
+
+model PatientProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  name            String
+  dob             DateTime?
+  gender          String?
+  bloodGroup      String?
+  allergies       String[]
+  emergencyConfig Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  relationships   CaregiverRelationship[]
+  wearableDevices WearableDevice[]
+  vitalReadings   VitalReading[]
+  medications     Medication[]
+  medicationLogs  MedicationLog[]
+  scheduleItems   ScheduleItem[]
+  labReports      LabReport[]
+  emergencyEvents EmergencyEvent[]
+  documents       Document[]
+  healthReports   HealthReport[]
+}
+
+model CaregiverProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  relationships CaregiverRelationship[]
+}
+
+model CaregiverRelationship {
+  id          String              @id @default(cuid())
+  patientId   String
+  patient     PatientProfile      @relation(fields: [patientId], references: [id])
+  caregiverId String
+  caregiver   CaregiverProfile    @relation(fields: [caregiverId], references: [id])
+  role        RelationshipRole   @default(secondary)
+  status      RelationshipStatus @default(pending)
+  invitedAt   DateTime            @default(now())
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+
+  permissions Permission[]
+}
+
+model Permission {
+  id             String                @id @default(cuid())
+  relationshipId String
+  relationship   CaregiverRelationship @relation(fields: [relationshipId], references: [id])
+  flags          String[]
+  updatedAt      DateTime              @updatedAt
+}
+
+model WearableDevice {
+  id         String         @id @default(cuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id])
+  source     String
+  deviceName String
+  model      String?
+  connected  Boolean        @default(false)
+  battery    Int?
+  lastSync   DateTime?
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+model VitalReading {
+  id            String         @id @default(cuid())
+  patientId     String
+  patient       PatientProfile @relation(fields: [patientId], references: [id])
+  deviceId      String?
+  source        String
+  metric        String
+  value         Float
+  unit          String
+  timestamp     DateTime
+  quality       String
+  accuracy      Float?
+  signalQuality Float?
+  metadata      Json?
+  createdAt     DateTime       @default(now())
+
+  @@index([patientId, timestamp])
+}
+
+model Medication {
+  id                String           @id @default(cuid())
+  patientId         String
+  patient           PatientProfile   @relation(fields: [patientId], references: [id])
+  name              String
+  dosage            String
+  frequency         String
+  startDate         DateTime
+  endDate           DateTime?
+  instructions      String?
+  beforeAfterFood   String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  schedules         MedicationSchedule[]
+  logs              MedicationLog[]
+}
+
+model MedicationSchedule {
+  id           String     @id @default(cuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id])
+  patientId    String
+  time         String
+  daysOfWeek   Int[]
+  active       Boolean    @default(true)
+  logs         MedicationLog[]
+}
+
+model MedicationLog {
+  id           String                @id @default(cuid())
+  scheduleId   String
+  schedule     MedicationSchedule    @relation(fields: [scheduleId], references: [id])
+  medicationId String
+  medication   Medication            @relation(fields: [medicationId], references: [id])
+  patientId    String
+  patient      PatientProfile        @relation(fields: [patientId], references: [id])
+  scheduledAt  DateTime
+  takenAt      DateTime?
+  status       MedicationLogStatus
+}
+
+model ScheduleItem {
+  id          String         @id @default(cuid())
+  patientId   String
+  patient     PatientProfile @relation(fields: [patientId], references: [id])
+  category    String
+  title       String
+  time        String
+  date        DateTime?
+  notes       String?
+  completed   Boolean        @default(false)
+  completedAt DateTime?
+}
+
+model LabReport {
+  id           String         @id @default(cuid())
+  patientId    String
+  patient      PatientProfile @relation(fields: [patientId], references: [id])
+  name         String
+  category     String
+  fileKey      String
+  fileName     String
+  mimeType     String
+  uploadedAt   DateTime       @default(now())
+  labName      String?
+  reportDate   DateTime?
+  ocrProcessed Boolean        @default(false)
+  results      LabResult[]
+}
+
+model LabResult {
+  id             String    @id @default(cuid())
+  labReportId    String
+  labReport      LabReport @relation(fields: [labReportId], references: [id])
+  testName       String
+  value          String
+  unit           String
+  referenceRange String
+  flag           String?
+}
+
+model Document {
+  id         String         @id @default(cuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id])
+  name       String
+  fileKey    String
+  fileName   String
+  mimeType   String
+  uploadedAt DateTime       @default(now())
+}
+
+model EmergencyEvent {
+  id            String               @id @default(cuid())
+  patientId     String
+  patient       PatientProfile       @relation(fields: [patientId], references: [id])
+  type          EmergencyEventType
+  status        EmergencyEventStatus @default(active)
+  triggeredAt   DateTime             @default(now())
+  acknowledgedAt DateTime?
+  resolvedAt    DateTime?
+  cancelledAt   DateTime?
+  reason        String?
+  metadata      Json?
+}
+
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id])
+  patientId String?
+  priority  NotificationPriority
+  type      String
+  title     String
+  body      String
+  read      Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  data      Json?
+}
+
+model AuditLog {
+  id              String    @id @default(cuid())
+  actorId         String
+  actor           User      @relation(fields: [actorId], references: [id])
+  actorRole       UserRole
+  action          String
+  targetPatientId String?
+  resourceType    String?
+  resourceId      String?
+  ip              String?
+  userAgent       String?
+  createdAt       DateTime  @default(now())
+  metadata        Json?
+}
+
+model HealthReport {
+  id            String         @id @default(cuid())
+  patientId     String
+  patient       PatientProfile @relation(fields: [patientId], references: [id])
+  generatedBy   String
+  rangeStart    DateTime
+  rangeEnd      DateTime
+  fileKey       String
+  fileName      String
+  shareToken    String?
+  shareExpiresAt DateTime?
+  createdAt     DateTime       @default(now())
+}

@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Caregiver Health",
+    "slug": "caregiver-health",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.healthcare.caregiver"
+    },
+    "android": {
+      "package": "com.healthcare.caregiver"
+    }
+  }
+}

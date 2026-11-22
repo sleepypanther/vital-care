@@ -1,0 +1,9 @@
+{
+  "name": "@healthcare/patient-watch",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'watch apps require native tooling'",
+    "typecheck": "echo 'watch apps require native tooling'"
+  }
+}
